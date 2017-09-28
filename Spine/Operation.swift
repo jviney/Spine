@@ -239,7 +239,14 @@ class SaveOperation: ConcurrentOperation {
 		if isNewResource {
 			updateResource()
 		} else {
-			updateRelationships()
+            let relationships = resource.fields.filter { field in
+                return field is Relationship && !field.isReadOnly && resource.value(forField: field.name) != nil
+            }
+            if !relationships.isEmpty {
+                updateRelationships(relationships)
+            } else {
+                updateResource()
+            }
 		}
 	}
 
@@ -316,16 +323,7 @@ class SaveOperation: ConcurrentOperation {
 		}
 	}
 
-	fileprivate func updateRelationships() {
-		let relationships = resource.fields.filter { field in
-			return field is Relationship && !field.isReadOnly
-		}
-		
-		guard !relationships.isEmpty else {
-			updateResource()
-			return
-		}
-		
+    fileprivate func updateRelationships(_ relationships: [Field]) {
 		let completionHandler: (_ result: Failable<Void, SpineError>?) -> Void = { result in
 			if let error = result?.error {
 				self.relationshipOperationQueue.cancelAllOperations()
